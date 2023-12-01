@@ -4,6 +4,8 @@
 public class Calculator {
 
 	public static void main(String[] args) {
+		
+		// (227, 2) -> 227*10^-2 = 2.27
 		System.out.println("sin(2.27) = "+sin(227, 2));
 	}
 		
