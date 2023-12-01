@@ -1,4 +1,4 @@
-'''Simulates the forces of gravity of an n body system in space'''
+'''Simulates the forces of gravity of an n body system in a vacuum'''
 
 import numpy as np
 import scipy as sci
