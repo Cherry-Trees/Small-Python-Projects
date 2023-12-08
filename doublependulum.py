@@ -86,7 +86,7 @@ p2.bob, = ax.plot(get_local_x(p1.L, p1.th)+get_local_x(p2.L, p2.th),
                   get_local_y(p1.L, p1.th)+get_local_y(p2.L, p2.th),"o", color="red")
 tracer, = ax.plot([],[], alpha=0.33, color="red")
 
-# Pass p1 and p2 theta's and thetadot's into solver
+# Pass p1 and p2 thetas and thetadots into solver
 init_args = [p1.th, p1.thdot, p2.th, p2.thdot]
 solv = odeint(ode, init_args, deltat, args=(p1.m, p2.m, p1.L, p2.L, p1.mu, p2.mu,))
 th1, th2 = [], []
