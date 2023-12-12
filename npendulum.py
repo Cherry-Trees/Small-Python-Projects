@@ -18,6 +18,8 @@ class Pendulum:
         self.mu = mu
         self.arm = None
         self.bob = None
+        self.th_data = []
+        self.thdot_data = []
         self.x_data = []
         self.y_data= []
 
@@ -25,6 +27,19 @@ class Pendulum:
 class Space:
 
     g = 9.81
+    FIGSIZE = (6.4, 6.4)
+    TRAIL_DENSITY = 20
+    TRAIL_LENGTH = 2
+    TRAIL_COLOR_SENSITIVITY = 2.33
+    TRAIL_COLORS = ["firebrick",
+                    "red",
+                    "orangered",
+                    "orange",
+                    "gold",
+                    "yellow",
+                    "lightyellow",
+                    "white"]
+    
     def __init__(self, t, dt) -> None:
         self.pl = []
         self.n = 0
@@ -39,17 +54,17 @@ class Space:
     
 
     def init_anim(self):
-        colors = ["crimson", "chocolate", "darkgoldenrod", "seagreen", "dodgerblue", "darkviolet"]
-        self.fig = plt.figure(facecolor="grey")
-        self.ax = plt.axes(xlim=[-self.Ltot*1.2, self.Ltot*1.2],
-                           ylim=[-self.Ltot*1.2, self.Ltot*1.2],
-                           aspect="equal", facecolor="lightgrey")
-
-        self.tracer, = self.ax.plot([],[], alpha=0.33, color=colors[self.n%6-1])
+        self.fig = plt.figure(figsize=Space.FIGSIZE, facecolor="black")
+        self.ax = self.fig.add_axes((0, 0, 1, 1), facecolor="black")
+        self.ax.set_xlim(-self.Ltot*1.2, self.Ltot*1.2)
+        self.ax.set_ylim(-self.Ltot*1.2, self.Ltot*1.2)
+        self.trail = [self.ax.plot([], [], lw=1, c='white', alpha=0, solid_capstyle='butt')[0]
+                      for _ in range(Space.TRAIL_DENSITY)]
+        
         for i in range(self.n):
-            self.pl[i].arm, = self.ax.plot([],[], color="black")
+            self.pl[i].arm, = self.ax.plot([],[], linewidth=0.5, color="white")
         for i in range(self.n):
-            self.pl[i].bob, = self.ax.plot([],[], "o", markersize=np.log(self.pl[i].m+1)*7.33, color=colors[i%6])
+            self.pl[i].bob, = self.ax.plot([],[], "o", markersize=np.log(self.pl[i].m+1)*(17.33/np.sqrt(self.Ltot)), color="white")
         
         
     def get_xy(self, th_data):
@@ -69,23 +84,34 @@ class Space:
         for state in solv:
             coor_list = self.get_xy(state[:self.n])
             for i in range(self.n):
+                self.pl[i].th_data.append(state[i])
+                self.pl[i].thdot_data.append(state[i+self.n])
                 self.pl[i].x_data.append(coor_list[i][0])
                 self.pl[i].y_data.append(coor_list[i][1])
     
 
     def anim(self, frame):
-        self.ax.set_title(f"t={self.deltat[frame]:.2f}")
+        
         for i in range(self.n):
             self.pl[i].bob.set_data(self.pl[i].x_data[frame:frame+1], self.pl[i].y_data[frame:frame+1])
             self.pl[i].arm.set_data([(self.pl[i-1].x_data[frame:frame+1]) if i-1>-1 else [0], self.pl[i].x_data[frame:frame+1]], 
                                       [self.pl[i-1].y_data[frame:frame+1] if i-1>-1 else [0], self.pl[i].y_data[frame:frame+1]])
-        self.tracer.set_data(self.pl[-1].x_data[:frame], self.pl[-1].y_data[:frame])
+            
+        for segment in range(Space.TRAIL_DENSITY):
+            frame_min = max(frame - (Space.TRAIL_DENSITY-segment)*Space.TRAIL_LENGTH, 0)
+            frame_max = frame_min + Space.TRAIL_LENGTH + 1
+            segment_alpha = (segment/Space.TRAIL_DENSITY)**3
+
+            self.trail[segment].set_data(self.pl[-1].x_data[frame_min:frame_max], self.pl[-1].y_data[frame_min:frame_max])
+            self.trail[segment].set_alpha(segment_alpha)
+            self.trail[segment].set_color(Space.TRAIL_COLORS[int(min(abs(self.pl[-1].thdot_data[frame_min])/Space.TRAIL_COLOR_SENSITIVITY, 
+                                                                     len(Space.TRAIL_COLORS)-1))])
     
 
     def run(self):
         self.init_anim()
-        self.solve()
-        ani = FuncAnimation(self.fig, self.anim, frames=len(self.deltat), interval=1)
+        self.solve()   
+        anim = FuncAnimation(self.fig, self.anim, frames=len(self.deltat), interval=1) 
         plt.show()
 
 
@@ -129,8 +155,6 @@ class Space:
 
 w = Space(t=20, dt=0.033)
 w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0))
-w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0))
-w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0))
-w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0))
-w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0))
+w.add_pendulum(Pendulum(m=1, L=0.75, th0=np.radians(90), thdot0=0, mu=0.0))
+w.add_pendulum(Pendulum(m=1, L=0.5, th0=np.radians(90), thdot0=0, mu=0.0))
 w.run()
