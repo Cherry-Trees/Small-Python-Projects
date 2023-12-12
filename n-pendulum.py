@@ -9,13 +9,15 @@ from scipy import integrate
 
 class Pendulum:
 
-    '''Pendulum odject with mass (m), length of rod (L), init-angle (th0), init-angvel (thdot0), friction coef (mu)'''
-    def __init__(self, m, L, th0, thdot0=0, mu=0) -> None:
+    '''Pendulum odject with mass (m), length of rod (L), init-angle (th0), init-angvel (thdot0), dampening coef (mu)'''
+    def __init__(self, m, L, th0, thdot0=0, mu=0, showTrail=True) -> None:
         self.m = m
         self.L = L
         self.th = th0
         self.thdot = thdot0
         self.mu = mu
+        self.showTrail = showTrail
+        self.trail = None
         self.arm = None
         self.bob = None
         self.th_data = []
@@ -58,13 +60,16 @@ class Space:
         self.ax = self.fig.add_axes((0, 0, 1, 1), facecolor="black")
         self.ax.set_xlim(-self.Ltot*1.2, self.Ltot*1.2)
         self.ax.set_ylim(-self.Ltot*1.2, self.Ltot*1.2)
-        self.trail = [self.ax.plot([], [], lw=1, c="white", alpha=0, solid_capstyle="butt")[0]
-                      for _ in range(Space.TRAIL_DENSITY)]
+
+        for p in self.pl:
+            if p.showTrail:
+                p.trail = [self.ax.plot([], [], lw=1, c='white', alpha=0, solid_capstyle='butt')[0]
+                            for _ in range(Space.TRAIL_DENSITY)]
         
-        for i in range(self.n):
-            self.pl[i].arm, = self.ax.plot([],[], linewidth=0.5, color="white")
-        for i in range(self.n):
-            self.pl[i].bob, = self.ax.plot([],[], "o", markersize=np.log(self.pl[i].m+1)*(17.33/np.sqrt(self.Ltot)), color="white")
+        for p in self.pl:
+            p.arm, = self.ax.plot([],[], linewidth=0.5, color="white")
+        for p in self.pl:
+            p.bob, = self.ax.plot([],[], "o", markersize=np.log(p.m+2)*(13.66/np.sqrt(self.Ltot)), color="white")
         
         
     def get_xy(self, th_data):
@@ -96,22 +101,22 @@ class Space:
             self.pl[i].bob.set_data(self.pl[i].x_data[frame:frame+1], self.pl[i].y_data[frame:frame+1])
             self.pl[i].arm.set_data([(self.pl[i-1].x_data[frame:frame+1]) if i-1>-1 else [0], self.pl[i].x_data[frame:frame+1]], 
                                       [self.pl[i-1].y_data[frame:frame+1] if i-1>-1 else [0], self.pl[i].y_data[frame:frame+1]])
-            
-        for segment in range(Space.TRAIL_DENSITY):
-            frame_min = max(frame - (Space.TRAIL_DENSITY-segment)*Space.TRAIL_LENGTH, 0)
-            frame_max = frame_min + Space.TRAIL_LENGTH + 1
-            segment_alpha = (segment/Space.TRAIL_DENSITY)**3
+        
+            if self.pl[i].showTrail:
+                for segment in range(Space.TRAIL_DENSITY):
+                    frame_min = max(frame - (Space.TRAIL_DENSITY-segment)*Space.TRAIL_LENGTH, 0)
+                    frame_max = frame_min + Space.TRAIL_LENGTH + 1
+                    segment_alpha = (segment/Space.TRAIL_DENSITY)**3
 
-            self.trail[segment].set_data(self.pl[-1].x_data[frame_min:frame_max], self.pl[-1].y_data[frame_min:frame_max])
-            self.trail[segment].set_alpha(segment_alpha)
-            self.trail[segment].set_color(Space.TRAIL_COLORS[int(min(abs(self.pl[-1].thdot_data[frame_min])/Space.TRAIL_COLOR_SENSITIVITY, 
+                    self.pl[i].trail[segment].set_data(self.pl[i].x_data[frame_min:frame_max], self.pl[i].y_data[frame_min:frame_max])
+                    self.pl[i].trail[segment].set_alpha(segment_alpha)
+                    self.pl[i].trail[segment].set_color(Space.TRAIL_COLORS[int(min(abs(self.pl[i].thdot_data[frame_min])/Space.TRAIL_COLOR_SENSITIVITY, 
                                                                      len(Space.TRAIL_COLORS)-1))])
     
-
     def run(self):
         self.init_anim()
         self.solve()   
-        anim = FuncAnimation(self.fig, self.anim, frames=len(self.deltat), interval=1) 
+        anim = FuncAnimation(self.fig, self.anim, frames=len(self.deltat), interval=1)     
         plt.show()
 
 
@@ -154,7 +159,7 @@ class Space:
             
 
 w = Space(t=20, dt=0.033)
-w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0))
+w.add_pendulum(Pendulum(m=1, L=1, th0=np.radians(90), thdot0=0, mu=0.0, showTrail=False))
 w.add_pendulum(Pendulum(m=1, L=0.75, th0=np.radians(90), thdot0=0, mu=0.0))
 w.add_pendulum(Pendulum(m=1, L=0.5, th0=np.radians(90), thdot0=0, mu=0.0))
 w.run()
