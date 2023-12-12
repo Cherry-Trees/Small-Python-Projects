@@ -58,7 +58,7 @@ class Space:
         self.ax = self.fig.add_axes((0, 0, 1, 1), facecolor="black")
         self.ax.set_xlim(-self.Ltot*1.2, self.Ltot*1.2)
         self.ax.set_ylim(-self.Ltot*1.2, self.Ltot*1.2)
-        self.trail = [self.ax.plot([], [], lw=1, c='white', alpha=0, solid_capstyle='butt')[0]
+        self.trail = [self.ax.plot([], [], lw=1, c="white", alpha=0, solid_capstyle="butt")[0]
                       for _ in range(Space.TRAIL_DENSITY)]
         
         for i in range(self.n):
