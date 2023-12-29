@@ -7,11 +7,6 @@ import numpy as np
 class WaveFunction:
 
     def __init__(self, psi, m, hbar, V=None, x0=-10, xf=10, n_points=2000):
-        self.x0 = x0
-        self.xf = xf
-        self.range = xf - x0
-        self.n_points = n_points
-
         self.m = m
         self.hbar = hbar
         self.V = lambda x: V(x) if V != None else 0
