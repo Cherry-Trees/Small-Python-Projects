@@ -4,72 +4,104 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 
 
-def psi(x, p=0, mu=0, sigma=1):
-    P = np.exp(-(x-mu)**2 / sigma**2, dtype=complex)
-    M = np.exp(1j*p*x)
-    return normalize(M*P, x[1]-x[0])
+class WaveFunction:
 
-def normalize(psi, dx):
-    psi_norm = np.sum(abs(psi)**2)*dx
-    return psi / np.sqrt(psi_norm)
+    def __init__(self, psi, m, hbar, V=None, x0=-10, xf=10, n_points=2000):
+        self.x0 = x0
+        self.xf = xf
+        self.range = xf - x0
+        self.n_points = n_points
 
-def Laplacian(psi, gridspace=1, bound=1):
-    d2psidx2 = -2 * psi[:]
-    d2psidx2[:-bound] += psi[bound:] 
-    d2psidx2[bound:] += psi[:-bound]
-    return d2psidx2 / gridspace
+        self.m = m
+        self.hbar = hbar
+        self.V = lambda x: V(x) if V != None else 0
 
-def dpsidt(psi, hbar=1, m=1, V=0, **kwargs):
-    return 1j*hbar/2*m * Laplacian(psi, **kwargs) - 1j*V*psi
+        self.domain = np.linspace(x0, xf, n_points)
+        self.dx = self.domain[1] - self.domain[0]
+        self.funcImage = psi(self.domain)
 
-def RK4_step(dydt, y, dt, **kwargs):
-    k1 = dt * dydt(y, **kwargs)
-    k2 = dt * dydt(y + k1/2, **kwargs)
-    k3 = dt * dydt(y + k2/2, **kwargs)
-    k4 = dt * dydt(y + k3, **kwargs)
-    return 1/6 * (k1 + 2*k2 + 2*k3 + k4)
+    def __call__(self):
+        return self.funcImage.copy()
+        
+    def discreteNormalize(self):
+        self.funcImage /= np.sqrt(sum(abs(self.funcImage)**2) * self.dx)
+    
+    def discreteLaplacian(self, funcImage):
+        diff = np.zeros_like(funcImage)
+        diff[1:-1] = (funcImage[2:] - 2*funcImage[1:-1] + funcImage[:-2])
+        return diff
+    
+    def schrodinger(self, funcImage):
+        return 1j*self.hbar/2*self.m * self.discreteLaplacian(funcImage) - 1j*self.V(self.domain)*funcImage
+    
 
+class WaveFunctionIntegrator:
 
-x0 = -10
-xf = 10
-dx = 0.01
-x = np.arange(x0, xf, dx)
-mu = -1.25
+    def __init__(self, initWaveFunc):
+        self.waveFunc = initWaveFunc
+        self.waveFuncStates = [initWaveFunc()]
+
+    def euler_step(self, dt):
+        self.waveFunc.funcImage += self.waveFunc.schrodinger(self.waveFunc()) * dt
+    
+    def RK4_step(self, dt):
+        k1 = dt * self.waveFunc.schrodinger(self.waveFunc())
+        k2 = dt * self.waveFunc.schrodinger(self.waveFunc() + k1/2)
+        k3 = dt * self.waveFunc.schrodinger(self.waveFunc() + k2/2)
+        k4 = dt * self.waveFunc.schrodinger(self.waveFunc() + k3)
+        self.waveFunc.funcImage += 1/6 * (k1 + 2*k2 + 2*k3 + k4)
+    
+    def integrate(self, steps, dt, append_every=10, method="RK4"):
+        if method == "RK4":
+            for t in range(steps):
+                self.RK4_step(dt)
+                self.waveFunc.discreteNormalize()
+
+                if t%append_every == 0:
+                    self.waveFuncStates.append(self.waveFunc())
+        
+        if method == "euler":
+            for t in range(steps):
+                self.euler_step(dt)
+                self.waveFunc.discreteNormalize()
+
+                if t%append_every == 0:
+                    self.waveFuncStates.append(self.waveFunc())
+        
+        return self.waveFuncStates
+    
+
+class WaveFunctionAnimator:
+
+    def animate(waveFuncStates, interval, **kwargs):
+        fig, ax = plt.subplots()
+        ax.set_xlim(kwargs["xlim"])
+        ax.set_ylim(kwargs["ylim"])
+
+        psi_abs, = ax.plot([],[],label="|Ψ|")
+        real, = ax.plot([],[],label="Ψ Re")
+        imag, = ax.plot([],[],label="Ψ Im")
+        ax.legend()
+
+        def _animation_func(frame):
+            psi_abs.set_data(interval, abs(waveFuncStates[frame]))
+            real.set_data(interval, waveFuncStates[frame].real)
+            imag.set_data(interval, waveFuncStates[frame].imag)
+            return psi_abs,real,imag,
+
+        anim = FuncAnimation(fig, _animation_func, len(waveFuncStates), interval=1, blit=True)
+        plt.show()
+    
+
+m = 10
 p = 25
+hbar = 1
+mu = 0
 sigma = 0.5
 
-wave_function0 = psi(x, p, mu, sigma)
-wave_function_states = [wave_function0]
-steps = 12500
-dt = 0.01
+psi = WaveFunction(lambda x: np.exp(-(x-mu)**2 / (2*sigma**2), dtype=complex) * np.exp(1j*p*x),
+                   m, hbar, lambda x: x**2)
 
-hbar=1
-m=10
-barrier1_potential = np.where((x>0)&(x<.2),0.42,0)
-V = barrier1_potential
-
-for i in range(steps):
-    wave_function0 += RK4_step(dpsidt, wave_function0, dt, hbar=hbar, m=m, V=V)
-    wave_function0 = normalize(wave_function0, dx)
-    
-    if i%15 == 0:
-        wave_function_states.append(wave_function0)
-
-fig, ax = plt.subplots()
-ax.set_xlim(-2.5, 2.5)
-ax.set_ylim(-2.5, 2.5)
-ax.fill_between(x, -2, 2, where=(x>0)&(x<.2),color="red",alpha=0.2)
-
-psi_abs, = ax.plot([],[],label="|Ψ|")
-real, = ax.plot([],[],label="Ψ Re")
-imag, = ax.plot([],[],label="Ψ Im")
-ax.legend()
-
-def animate(frame):
-    psi_abs.set_data(x, np.abs(wave_function_states[frame]))
-    real.set_data(x, np.real(wave_function_states[frame]))
-    imag.set_data(x, np.imag(wave_function_states[frame]))
-    return psi_abs,real,imag,
-
-ANIMATOR = FuncAnimation(fig, animate, len(wave_function_states), interval=1, blit=True)
-plt.show()
+solver = WaveFunctionIntegrator(psi)
+states = solver.integrate(15000, 0.01, method="RK4")
+WaveFunctionAnimator.animate(states, psi.domain, xlim=(-2,2), ylim=(-2,2))
