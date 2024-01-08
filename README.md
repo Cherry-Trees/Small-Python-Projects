@@ -2,5 +2,5 @@ Hello! I post stuff I make for fun here, which mostly entails physics or mathema
 
 
 
-<img src="https://github.com/Cherry-Trees/my-projects/blob/main/gifs/pendulum.gif" width="400" height="400" />
-<img src="https://github.com/Cherry-Trees/my-projects/blob/main/gifs/wave.gif" width="400" height="400" />
+<img src="https://github.com/Cherry-Trees/my-projects/blob/main/gifs/pendulum.gif" width="600" height="600" />
+<img src="https://github.com/Cherry-Trees/my-projects/blob/main/gifs/wave.gif" width="600" height="600" />
